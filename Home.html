@@ -2,45 +2,49 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro UI Creator for Roblox</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Pro Studio Creator - Final Platinum</title>
+    
+    <!-- Importação dos Ícones do Google -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- Link para a sua folha de estilos -->
+    <link rel="stylesheet" href="Style.css">
 </head>
 <body>
 
-    <div class="main-container">
-        <header class="top-bar">
-            <h1>Pro UI Creator</h1>
-            <div id="view-toggle" class="view-toggle">
-                <button id="btn-preview" class="view-button active">Preview</button>
-                <button id="btn-code" class="view-button">Código</button>
+    <div class="app-container">
+        <main class="viewport">
+            <div class="toolbar">
+                <button id="tool-add" class="tool-button" title="Adicionar Elemento"><span class="material-icons">add</span></button>
+                <button id="tool-code" class="tool-button" title="Ver Código"><span class="material-icons">code</span></button>
             </div>
-        </header>
-
-        <main class="content-area">
-            <div id="preview-area" class="workspace"></div>
-            <div id="code-area" class="workspace">
-                <pre id="lua-code"></pre>
-            </div>
-
-            <div id="floating-panel" class="floating-panel">
-                <div class="panel-header">
-                    <div id="panel-tabs" class="panel-tabs">
-                        <button class="panel-tab active" data-tab="explorer">Explorer</button>
-                        <button class="panel-tab" data-tab="add">Adicionar</button>
-                        <button class="panel-tab" data-tab="props">Propriedades</button>
-                    </div>
-                </div>
-                <div class="panel-content">
-                    <div id="section-explorer" class="panel-section active"></div>
-                    <div id="section-add" class="panel-section"></div>
-                    <div id="section-props" class="panel-section"></div>
-                </div>
-                <div id="panel-toggle-btn" class="panel-toggle-btn">☰</div>
-            </div>
+            <div id="preview-area" class="preview-area"></div>
         </main>
+
+        <aside id="properties-panel" class="properties-panel">
+            <div class="panel-handle" id="panel-handle"></div>
+            <div class="panel-content">
+                <div class="panel-header">
+                    <h2 id="element-name-header">Explorer</h2>
+                </div>
+                <div id="explorer-section" class="panel-section"></div>
+                <div id="properties-section" class="panel-section"></div>
+            </div>
+        </aside>
     </div>
 
-    <script src="app.js"></script>
+    <!-- Modal para Adicionar Elementos -->
+    <div id="add-element-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Adicionar Elemento</h3>
+            <div id="add-elements-grid"></div>
+            <button id="close-add-modal-btn" class="modal-button">Fechar</button>
+        </div>
+    </div>
+    
+    <!-- Link para o seu script JavaScript -->
+    <script src="App.js"></script>
+
 </body>
 </html>
