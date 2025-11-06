@@ -111,7 +111,291 @@
         .panel-section { padding: 16px; }
 
         details { margin-bottom: 12px; }
-        summary { font-weight: 600; cursor: pointer; padding: 8px; background-color: var(--bg-elementById(state.selectedId)));
+        summary { font-weight: 600; cursor: pointer; padding: 8px; background-color: var(--bg-element); border-radius: 4px; list-style: none; }
+        summary::-webkit-details-marker { display: none; }
+        summary::before { content: '► '; }
+        details[open] > summary::before { content: '▼ '; }
+        details[open] > div { padding: 12px 8px 0 8px; }
+
+        .prop-group { margin-bottom: 10px; }
+        .prop-group label { font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+        .prop-input { width: 100%; background-color: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: 4px; }
+        .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        .tree-node { display: flex; align-items: center; padding: 6px; border-radius: 4px; cursor: pointer; }
+        .tree-node:hover { background-color: var(--bg-element); }
+        .tree-node.selected { background-color: var(--accent-blue); }
+        .tree-node-label { flex-grow: 1; display: flex; align-items: center; gap: 6px; }
+
+        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.6); z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .modal-overlay.hidden { display: none; }
+        .modal-content { background-color: var(--bg-panel); padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid var(--border-color); }
+        .modal-content h3 { margin-bottom: 16px; }
+        .add-elements-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+        .add-element-btn { border: 1px solid; padding: 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .close-modal-btn { width: 100%; padding: 12px; background-color: var(--bg-element); border: none; color: var(--text-primary); border-radius: 6px; cursor: pointer; }
+
+        .roblox-element {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(0,0,0,0.2);
+            cursor: move;
+        }
+
+        .selection-box {
+            position: absolute;
+            border: 2px solid var(--accent-blue);
+            pointer-events: none;
+        }
+
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border: 1px solid var(--accent-blue);
+            border-radius: 50%;
+            z-index: 10;
+        }
+
+        .radius-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--accent-yellow);
+            border: 1px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 11;
+        }
+
+        @media (max-width: 768px) {
+            .viewport { padding: 10px; }
+            .properties-panel { position: absolute; right: 0; top: 0; transform: translateX(100%); }
+            .properties-panel.open { transform: translateX(0); }
+            .panel-handle { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <main class="viewport">
+            <div class="toolbar">
+                <button id="tool-add" class="tool-button active" title="Adicionar Elemento"><span class="material-icons">add</span></button>
+                <button id="tool-move" class="tool-button" title="Mover"><span class="material-icons">open_with</span></button>
+            </div>
+            <div id="preview-area" class="preview-area"></div>
+        </main>
+
+        <aside id="properties-panel" class="properties-panel">
+            <div class="panel-handle" id="panel-handle">
+                <span class="material-icons">menu</span>
+            </div>
+            <div class="panel-content">
+                <div class="panel-header">
+                    <h2 id="element-name-header">Explorer</h2>
+                </div>
+                <div id="explorer-section" class="panel-section"></div>
+                <div id="properties-section" class="panel-section"></div>
+            </div>
+        </aside>
+    </div>
+
+    <div id="add-element-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Adicionar Elemento</h3>
+            <div id="add-elements-grid" class="add-elements-grid"></div>
+            <button id="close-modal-btn" class="close-modal-btn">Fechar</button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const state = {
+                elements: [], selectedId: null, idCounter: 0,
+                action: null, dragStart: { x: 0, y: 0 }, originalElement: null,
+                isPanelOpen: false,
+            };
+
+            const elementTypes = [
+                { name: 'Frame', color: '#3b82f6' }, { name: 'TextLabel', color: '#8b5cf6' },
+                { name: 'TextButton', color: '#ec4899' }, { name: 'ImageLabel', color: '#f59e0b' },
+                { name: 'UICorner', color: '#fde047' }, { name: 'UIGradient', color: '#10b981' },
+            ];
+
+            const getDefaultProperties = (type, name) => {
+                const base = { Name: name, Position: { X: 50, Y: 50 }, Size: { X: 200, Y: 100 }, CornerRadius: 0, BackgroundColor3: '#393939' };
+                switch(type) {
+                    case 'TextLabel': return { ...base, Text: 'TextLabel', TextColor3: '#FFFFFF', TextSize: 18 };
+                    case 'TextButton': return { ...base, Size: { X: 120, Y: 50 }, Text: 'Button', TextColor3: '#FFFFFF', TextSize: 18 };
+                    default: return base;
+                }
+            };
+
+            const findElementById = (id) => state.elements.find(el => el.id === id);
+
+            const render = () => {
+                renderPreview();
+                renderExplorer();
+                renderProperties();
+            };
+
+            const renderPreview = () => {
+                const area = document.getElementById('preview-area');
+                area.innerHTML = '';
+                state.elements.forEach(elData => {
+                    const div = document.createElement('div');
+                    div.className = 'roblox-element';
+                    div.dataset.id = elData.id;
+                    const p = elData.properties;
+                    div.style.left = `${p.Position.X}px`;
+                    div.style.top = `${p.Position.Y}px`;
+                    div.style.width = `${p.Size.X}px`;
+                    div.style.height = `${p.Size.Y}px`;
+                    div.style.backgroundColor = p.BackgroundColor3;
+                    div.style.borderRadius = `${p.CornerRadius}px`;
+                    if (p.Text) {
+                        div.innerText = p.Text;
+                        div.style.color = p.TextColor3;
+                        div.style.fontSize = `${p.TextSize}px`;
+                    }
+                    area.appendChild(div);
+                });
+                if (state.selectedId) renderSelectionBox(findElementById(state.selectedId));
+            };
+
+            const renderSelectionBox = (el) => {
+                if (!el) return;
+                const p = el.properties;
+                const box = document.createElement('div');
+                box.className = 'selection-box';
+                box.style.left = `${p.Position.X}px`;
+                box.style.top = `${p.Position.Y}px`;
+                box.style.width = `${p.Size.X}px`;
+                box.style.height = `${p.Size.Y}px`;
+
+                const handles = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+                handles.forEach(h => {
+                    const handle = document.createElement('div');
+                    handle.className = `resize-handle ${h}`;
+                    handle.dataset.direction = h;
+                    box.appendChild(handle);
+                    setHandlePosition(handle, h, p.Size);
+                });
+                
+                const radiusHandle = document.createElement('div');
+                radiusHandle.className = 'radius-handle';
+                radiusHandle.style.left = `${Math.min(p.CornerRadius, p.Size.X / 2, p.Size.Y / 2) - 6}px`;
+                radiusHandle.style.top = `${Math.min(p.CornerRadius, p.Size.X / 2, p.Size.Y / 2) - 6}px`;
+                box.appendChild(radiusHandle);
+
+                document.getElementById('preview-area').appendChild(box);
+            };
+            
+            const setHandlePosition = (handle, dir, size) => {
+                const positions = {
+                    n: { left: `${size.X / 2 - 5}px`, top: '-5px', cursor: 'ns-resize' },
+                    ne: { right: '-5px', top: '-5px', cursor: 'nesw-resize' },
+                    e: { right: '-5px', top: `${size.Y / 2 - 5}px`, cursor: 'ew-resize' },
+                    se: { right: '-5px', bottom: '-5px', cursor: 'nwse-resize' },
+                    s: { left: `${size.X / 2 - 5}px`, bottom: '-5px', cursor: 'ns-resize' },
+                    sw: { left: '-5px', bottom: '-5px', cursor: 'nesw-resize' },
+                    w: { left: '-5px', top: `${size.Y / 2 - 5}px`, cursor: 'ew-resize' },
+                    nw: { left: '-5px', top: '-5px', cursor: 'nwse-resize' }
+                };
+                Object.assign(handle.style, positions[dir]);
+            };
+
+            const renderExplorer = () => {
+                const explorer = document.getElementById('explorer-section');
+                explorer.innerHTML = state.elements.map(el => `
+                    <div class="tree-node ${el.id === state.selectedId ? 'selected' : ''}" data-id="${el.id}">
+                        <div class="tree-node-label"><span class="material-icons">widgets</span>${el.properties.Name}</div>
+                    </div>`).join('') || '<p style="text-align:center; color:var(--text-secondary);">Vazio</p>';
+            };
+
+            const renderProperties = () => {
+                const container = document.getElementById('properties-section');
+                const el = findElementById(state.selectedId);
+                if (!el) {
+                    document.getElementById('element-name-header').innerText = 'Explorer';
+                    container.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">Selecione um elemento.</p>';
+                    return;
+                }
+                document.getElementById('element-name-header').innerText = el.properties.Name;
+                const createInput = (label, key, type = 'text') => {
+                    const keys = key.split('.');
+                    let value = el.properties;
+                    keys.forEach(k => value = value[k]);
+                    return `<div class="prop-group"><label>${label}</label><input class="prop-input" type="${type}" value="${value}" data-key="${key}"></div>`;
+                };
+                let html = createInput('Nome', 'Name');
+                html += '<details open><summary>Layout</summary><div><div class="prop-grid">' + createInput('X', 'Position.X', 'number') + createInput('Y', 'Position.Y', 'number') + '</div><div class="prop-grid">' + createInput('Width', 'Size.X', 'number') + createInput('Height', 'Size.Y', 'number') + '</div></div></details>';
+                html += '<details open><summary>Aparência</summary><div>' + createInput('Cor de Fundo', 'BackgroundColor3', 'color') + createInput('Borda', 'CornerRadius', 'number') + '</div></details>';
+                container.innerHTML = html;
+            };
+
+            const setupEventListeners = () => {
+                document.getElementById('tool-add').addEventListener('click', () => document.getElementById('add-element-modal').classList.remove('hidden'));
+                document.getElementById('close-modal-btn').addEventListener('click', () => document.getElementById('add-element-modal').classList.add('hidden'));
+                document.getElementById('add-elements-grid').innerHTML = elementTypes.map(t => `<button class="add-element-btn" style="background-color: ${t.color}40; border-color: ${t.color};" data-type="${t.name}">${t.name}</button>`).join('');
+                document.getElementById('add-elements-grid').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('add-element-btn')) {
+                        const id = ++state.idCounter;
+                        const type = e.target.dataset.type;
+                        state.elements.push({ id, type, properties: getDefaultProperties(type, `${type}${id}`) });
+                        state.selectedId = id;
+                        document.getElementById('add-element-modal').classList.add('hidden');
+                        render();
+                    }
+                });
+
+                document.getElementById('explorer-section').addEventListener('click', (e) => {
+                    const node = e.target.closest('.tree-node');
+                    if (node) {
+                        state.selectedId = parseInt(node.dataset.id);
+                        render();
+                    }
+                });
+                
+                document.getElementById('properties-section').addEventListener('input', (e) => {
+                    if (e.target.classList.contains('prop-input')) {
+                        const keyPath = e.target.dataset.key.split('.');
+                        const el = findElementById(state.selectedId);
+                        if (!el) return;
+                        let prop = el.properties;
+                        for (let i = 0; i < keyPath.length - 1; i++) {
+                            prop = prop[keyPath[i]];
+                        }
+                        prop[keyPath[keyPath.length - 1]] = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
+                        render();
+                    }
+                });
+
+                document.getElementById('panel-handle').addEventListener('click', () => {
+                    state.isPanelOpen = !state.isPanelOpen;
+                    document.getElementById('properties-panel').classList.toggle('open', state.isPanelOpen);
+                });
+
+                const previewArea = document.getElementById('preview-area');
+                previewArea.addEventListener('mousedown', (e) => {
+                    const target = e.target;
+                    const selectedElement = target.closest('.roblox-element');
+                    const selectionBox = target.closest('.selection-box');
+                    
+                    state.dragStart = { x: e.clientX, y: e.clientY };
+
+                    if (selectionBox) {
+                        if (target.classList.contains('resize-handle')) {
+                            state.action = 'resize';
+                            state.actionDetail = target.dataset.direction;
+                        } else if (target.classList.contains('radius-handle')) {
+                            state.action = 'radius';
+                        }
+                        state.originalElement = JSON.parse(JSON.stringify(findElementById(state.selectedId)));
                     } else if (selectedElement) {
                         state.selectedId = parseInt(selectedElement.dataset.id);
                         state.action = 'move';
@@ -137,3 +421,35 @@
                             break;
                         case 'radius':
                             const newRadius = Math.max(0, orig.CornerRadius + (dx + dy) / 2);
+                            el.properties.CornerRadius = Math.min(newRadius, orig.Size.X / 2, orig.Size.Y / 2);
+                            break;
+                        case 'resize':
+                            const dir = state.actionDetail;
+                            if (dir.includes('e')) el.properties.Size.X = Math.max(20, orig.Size.X + dx);
+                            if (dir.includes('w')) {
+                                el.properties.Size.X = Math.max(20, orig.Size.X - dx);
+                                el.properties.Position.X = orig.Position.X + dx;
+                            }
+                            if (dir.includes('s')) el.properties.Size.Y = Math.max(20, orig.Size.Y + dy);
+                            if (dir.includes('n')) {
+                                el.properties.Size.Y = Math.max(20, orig.Size.Y - dy);
+                                el.properties.Position.Y = orig.Position.Y + dy;
+                            }
+                            break;
+                    }
+                    render();
+                });
+
+                document.addEventListener('mouseup', () => {
+                    state.action = null;
+                    state.originalElement = null;
+                });
+            };
+
+            render();
+            setupEventListeners();
+        });
+    </script>
+
+</body>
+</html>
