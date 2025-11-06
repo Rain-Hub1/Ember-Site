@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Studio UI Creator</title>
+    <title>Studio UI Creator - Split View</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <style>
         :root {
             --bg-main: #202020;
             --bg-panel: #252525;
-            --bg-element: #393939;
+            --bg-workspace: #333333;
             --bg-input: #1b1b1b;
             --border-color: #404040;
             --text-primary: #e0e0e0;
             --text-secondary: #a0a0a0;
             --accent-blue: #0078d4;
             --accent-yellow: #ffb900;
+            --accent-green: #28a745;
             --shadow: 0 4px 12px rgba(0,0,0,0.4);
         }
 
@@ -34,85 +35,76 @@
 
         .app-container { display: flex; width: 100%; height: 100%; }
 
-        .viewport { flex-grow: 1; position: relative; display: flex; justify-content: center; align-items: center; padding: 20px; }
-
-        .toolbar {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
+        .main-content {
+            flex-grow: 1;
             display: flex;
-            gap: 8px;
-            background-color: var(--bg-panel);
-            padding: 8px;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            z-index: 20;
-            border: 1px solid var(--border-color);
+            position: relative;
         }
 
-        .tool-button {
-            background-color: var(--bg-element);
-            border: none;
-            color: var(--text-primary);
-            width: 40px;
-            height: 40px;
-            border-radius: 6px;
-            cursor: pointer;
+        .workspace {
+            height: 100%;
+            padding: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background-color 0.2s;
         }
 
-        .tool-button:hover { background-color: #4a4a4a; }
-        .tool-button.active { background-color: var(--accent-blue); }
+        #preview-container {
+            width: 50%;
+            background-color: var(--bg-workspace);
+        }
+
+        #code-container {
+            width: 50%;
+            background-color: #1e1e1e;
+        }
+
+        .resizer-handle {
+            width: 10px;
+            background-color: var(--border-color);
+            cursor: col-resize;
+            position: relative;
+            z-index: 10;
+        }
 
         .preview-area {
             width: 100%;
             height: 100%;
-            background-color: var(--bg-main);
             border: 1px dashed var(--border-color);
             border-radius: 8px;
             position: relative;
             overflow: hidden;
         }
 
+        #lua-code {
+            width: 100%;
+            height: 100%;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #9cdcfe;
+            white-space: pre;
+            overflow: auto;
+        }
+
         .properties-panel {
-            width: 320px;
+            width: 300px;
             height: 100%;
             background-color: var(--bg-panel);
             border-left: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease-out;
             z-index: 30;
-        }
-
-        .panel-handle {
-            display: none;
-            position: absolute;
-            left: -40px;
-            top: 10px;
-            width: 40px;
-            height: 40px;
-            background-color: var(--bg-panel);
-            border: 1px solid var(--border-color);
-            border-right: none;
-            border-radius: 8px 0 0 8px;
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
+            flex-shrink: 0;
         }
 
         .panel-content { flex-grow: 1; overflow-y: auto; }
         .panel-header { padding: 16px; border-bottom: 1px solid var(--border-color); }
-        .panel-header h2 { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .panel-header h2 { font-size: 16px; }
         .panel-section { padding: 16px; }
 
         details { margin-bottom: 12px; }
-        summary { font-weight: 600; cursor: pointer; padding: 8px; background-color: var(--bg-element); border-radius: 4px; list-style: none; }
-        summary::-webkit-details-marker { display: none; }
+        summary { font-weight: 600; cursor: pointer; padding: 8px; background-color: #333; border-radius: 4px; list-style: none; }
         summary::before { content: '► '; }
         details[open] > summary::before { content: '▼ '; }
         details[open] > div { padding: 12px 8px 0 8px; }
@@ -123,17 +115,21 @@
         .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
         .tree-node { display: flex; align-items: center; padding: 6px; border-radius: 4px; cursor: pointer; }
-        .tree-node:hover { background-color: var(--bg-element); }
+        .tree-node:hover { background-color: #333; }
         .tree-node.selected { background-color: var(--accent-blue); }
         .tree-node-label { flex-grow: 1; display: flex; align-items: center; gap: 6px; }
 
-        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.6); z-index: 100; display: flex; align-items: center; justify-content: center; }
-        .modal-overlay.hidden { display: none; }
-        .modal-content { background-color: var(--bg-panel); padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid var(--border-color); }
-        .modal-content h3 { margin-bottom: 16px; }
-        .add-elements-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-        .add-element-btn { border: 1px solid; padding: 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .close-modal-btn { width: 100%; padding: 12px; background-color: var(--bg-element); border: none; color: var(--text-primary); border-radius: 6px; cursor: pointer; }
+        .add-element-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--accent-green);
+            border: none;
+            color: white;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 16px;
+        }
 
         .roblox-element {
             position: absolute;
@@ -158,76 +154,55 @@
             border: 1px solid var(--accent-blue);
             border-radius: 50%;
             z-index: 10;
-        }
-
-        .radius-handle {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background: var(--accent-yellow);
-            border: 1px solid white;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 11;
-        }
-
-        @media (max-width: 768px) {
-            .viewport { padding: 10px; }
-            .properties-panel { position: absolute; right: 0; top: 0; transform: translateX(100%); }
-            .properties-panel.open { transform: translateX(0); }
-            .panel-handle { display: flex; }
+            pointer-events: all;
         }
     </style>
 </head>
 <body>
 
     <div class="app-container">
-        <main class="viewport">
-            <div class="toolbar">
-                <button id="tool-add" class="tool-button active" title="Adicionar Elemento"><span class="material-icons">add</span></button>
-                <button id="tool-move" class="tool-button" title="Mover"><span class="material-icons">open_with</span></button>
+        <div class="main-content">
+            <div id="preview-container" class="workspace">
+                <div id="preview-area"></div>
             </div>
-            <div id="preview-area" class="preview-area"></div>
-        </main>
+            <div id="resizer" class="resizer-handle"></div>
+            <div id="code-container" class="workspace">
+                <pre id="lua-code"></pre>
+            </div>
+        </div>
 
         <aside id="properties-panel" class="properties-panel">
-            <div class="panel-handle" id="panel-handle">
-                <span class="material-icons">menu</span>
-            </div>
             <div class="panel-content">
                 <div class="panel-header">
                     <h2 id="element-name-header">Explorer</h2>
                 </div>
                 <div id="explorer-section" class="panel-section"></div>
+                <div class="panel-section">
+                    <button id="add-element-btn" class="add-element-btn">
+                        <span class="material-icons" style="vertical-align: middle; font-size: 18px;">add</span> Adicionar
+                    </button>
+                </div>
+                <div class="panel-header" style="border-top: 1px solid var(--border-color);">
+                    <h2>Propriedades</h2>
+                </div>
                 <div id="properties-section" class="panel-section"></div>
             </div>
         </aside>
-    </div>
-
-    <div id="add-element-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h3>Adicionar Elemento</h3>
-            <div id="add-elements-grid" class="add-elements-grid"></div>
-            <button id="close-modal-btn" class="close-modal-btn">Fechar</button>
-        </div>
     </div>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const state = {
-                elements: [], selectedId: null, idCounter: 0,
-                action: null, dragStart: { x: 0, y: 0 }, originalElement: null,
-                isPanelOpen: false,
+                elements: [],
+                selectedId: null,
+                idCounter: 0,
+                action: null,
+                dragStart: { x: 0, y: 0 },
+                originalRect: null,
             };
 
-            const elementTypes = [
-                { name: 'Frame', color: '#3b82f6' }, { name: 'TextLabel', color: '#8b5cf6' },
-                { name: 'TextButton', color: '#ec4899' }, { name: 'ImageLabel', color: '#f59e0b' },
-                { name: 'UICorner', color: '#fde047' }, { name: 'UIGradient', color: '#10b981' },
-            ];
-
             const getDefaultProperties = (type, name) => {
-                const base = { Name: name, Position: { X: 50, Y: 50 }, Size: { X: 200, Y: 100 }, CornerRadius: 0, BackgroundColor3: '#393939' };
+                const base = { Name: name, Position: { X: 50, Y: 50 }, Size: { X: 200, Y: 100 }, BackgroundColor3: '#393939' };
                 switch(type) {
                     case 'TextLabel': return { ...base, Text: 'TextLabel', TextColor3: '#FFFFFF', TextSize: 18 };
                     case 'TextButton': return { ...base, Size: { X: 120, Y: 50 }, Text: 'Button', TextColor3: '#FFFFFF', TextSize: 18 };
@@ -241,6 +216,7 @@
                 renderPreview();
                 renderExplorer();
                 renderProperties();
+                renderCode();
             };
 
             const renderPreview = () => {
@@ -256,7 +232,6 @@
                     div.style.width = `${p.Size.X}px`;
                     div.style.height = `${p.Size.Y}px`;
                     div.style.backgroundColor = p.BackgroundColor3;
-                    div.style.borderRadius = `${p.CornerRadius}px`;
                     if (p.Text) {
                         div.innerText = p.Text;
                         div.style.color = p.TextColor3;
@@ -280,18 +255,11 @@
                 const handles = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
                 handles.forEach(h => {
                     const handle = document.createElement('div');
-                    handle.className = `resize-handle ${h}`;
+                    handle.className = 'resize-handle';
                     handle.dataset.direction = h;
                     box.appendChild(handle);
                     setHandlePosition(handle, h, p.Size);
                 });
-                
-                const radiusHandle = document.createElement('div');
-                radiusHandle.className = 'radius-handle';
-                radiusHandle.style.left = `${Math.min(p.CornerRadius, p.Size.X / 2, p.Size.Y / 2) - 6}px`;
-                radiusHandle.style.top = `${Math.min(p.CornerRadius, p.Size.X / 2, p.Size.Y / 2) - 6}px`;
-                box.appendChild(radiusHandle);
-
                 document.getElementById('preview-area').appendChild(box);
             };
             
@@ -321,11 +289,9 @@
                 const container = document.getElementById('properties-section');
                 const el = findElementById(state.selectedId);
                 if (!el) {
-                    document.getElementById('element-name-header').innerText = 'Explorer';
                     container.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">Selecione um elemento.</p>';
                     return;
                 }
-                document.getElementById('element-name-header').innerText = el.properties.Name;
                 const createInput = (label, key, type = 'text') => {
                     const keys = key.split('.');
                     let value = el.properties;
@@ -334,23 +300,37 @@
                 };
                 let html = createInput('Nome', 'Name');
                 html += '<details open><summary>Layout</summary><div><div class="prop-grid">' + createInput('X', 'Position.X', 'number') + createInput('Y', 'Position.Y', 'number') + '</div><div class="prop-grid">' + createInput('Width', 'Size.X', 'number') + createInput('Height', 'Size.Y', 'number') + '</div></div></details>';
-                html += '<details open><summary>Aparência</summary><div>' + createInput('Cor de Fundo', 'BackgroundColor3', 'color') + createInput('Borda', 'CornerRadius', 'number') + '</div></details>';
+                html += '<details open><summary>Aparência</summary><div>' + createInput('Cor de Fundo', 'BackgroundColor3', 'color') + '</div></details>';
                 container.innerHTML = html;
             };
 
+            const renderCode = () => {
+                let code = `-- Gerado pelo Studio UI Creator\n\n`;
+                if (state.elements.length === 0) {
+                    code += `-- Adicione elementos para ver o código Luau.`;
+                } else {
+                    code += `local screenGui = Instance.new("ScreenGui")\nscreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")\n\n`;
+                    state.elements.forEach(el => {
+                        const p = el.properties;
+                        const varName = p.Name.replace(/\s/g, '');
+                        code += `local ${varName} = Instance.new("${el.type}")\n`;
+                        code += `${varName}.Name = "${p.Name}"\n`;
+                        code += `${varName}.Parent = screenGui\n`;
+                        code += `${varName}.Position = UDim2.new(0, ${Math.round(p.Position.X)}, 0, ${Math.round(p.Position.Y)})\n`;
+                        code += `${varName}.Size = UDim2.new(0, ${Math.round(p.Size.X)}, 0, ${Math.round(p.Size.Y)})\n`;
+                        code += `${varName}.BackgroundColor3 = Color3.fromHex("${p.BackgroundColor3}")\n\n`;
+                    });
+                }
+                document.getElementById('lua-code').textContent = code;
+            };
+
             const setupEventListeners = () => {
-                document.getElementById('tool-add').addEventListener('click', () => document.getElementById('add-element-modal').classList.remove('hidden'));
-                document.getElementById('close-modal-btn').addEventListener('click', () => document.getElementById('add-element-modal').classList.add('hidden'));
-                document.getElementById('add-elements-grid').innerHTML = elementTypes.map(t => `<button class="add-element-btn" style="background-color: ${t.color}40; border-color: ${t.color};" data-type="${t.name}">${t.name}</button>`).join('');
-                document.getElementById('add-elements-grid').addEventListener('click', (e) => {
-                    if (e.target.classList.contains('add-element-btn')) {
-                        const id = ++state.idCounter;
-                        const type = e.target.dataset.type;
-                        state.elements.push({ id, type, properties: getDefaultProperties(type, `${type}${id}`) });
-                        state.selectedId = id;
-                        document.getElementById('add-element-modal').classList.add('hidden');
-                        render();
-                    }
+                document.getElementById('add-element-btn').addEventListener('click', () => {
+                    const id = ++state.idCounter;
+                    const type = 'Frame';
+                    state.elements.push({ id, type, properties: getDefaultProperties(type, `${type}${id}`) });
+                    state.selectedId = id;
+                    render();
                 });
 
                 document.getElementById('explorer-section').addEventListener('click', (e) => {
@@ -367,83 +347,93 @@
                         const el = findElementById(state.selectedId);
                         if (!el) return;
                         let prop = el.properties;
-                        for (let i = 0; i < keyPath.length - 1; i++) {
-                            prop = prop[keyPath[i]];
-                        }
+                        for (let i = 0; i < keyPath.length - 1; i++) prop = prop[keyPath[i]];
                         prop[keyPath[keyPath.length - 1]] = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
                         render();
                     }
                 });
 
-                document.getElementById('panel-handle').addEventListener('click', () => {
-                    state.isPanelOpen = !state.isPanelOpen;
-                    document.getElementById('properties-panel').classList.toggle('open', state.isPanelOpen);
-                });
-
                 const previewArea = document.getElementById('preview-area');
                 previewArea.addEventListener('mousedown', (e) => {
                     const target = e.target;
-                    const selectedElement = target.closest('.roblox-element');
-                    const selectionBox = target.closest('.selection-box');
+                    const elDiv = target.closest('.roblox-element');
+                    const handle = target.closest('.resize-handle');
                     
                     state.dragStart = { x: e.clientX, y: e.clientY };
 
-                    if (selectionBox) {
-                        if (target.classList.contains('resize-handle')) {
-                            state.action = 'resize';
-                            state.actionDetail = target.dataset.direction;
-                        } else if (target.classList.contains('radius-handle')) {
-                            state.action = 'radius';
-                        }
-                        state.originalElement = JSON.parse(JSON.stringify(findElementById(state.selectedId)));
-                    } else if (selectedElement) {
-                        state.selectedId = parseInt(selectedElement.dataset.id);
+                    if (handle) {
+                        state.action = 'resize';
+                        state.actionDetail = handle.dataset.direction;
+                    } else if (elDiv) {
+                        state.selectedId = parseInt(elDiv.dataset.id);
                         state.action = 'move';
-                        state.originalElement = JSON.parse(JSON.stringify(findElementById(state.selectedId)));
-                        render();
                     } else {
                         state.selectedId = null;
-                        render();
                     }
+                    
+                    if (state.selectedId) {
+                        const el = findElementById(state.selectedId);
+                        state.originalRect = { ...el.properties.Position, ...el.properties.Size };
+                    }
+                    render();
                 });
 
                 document.addEventListener('mousemove', (e) => {
-                    if (!state.action) return;
+                    if (!state.action || !state.selectedId) return;
+                    
                     const dx = e.clientX - state.dragStart.x;
                     const dy = e.clientY - state.dragStart.y;
                     const el = findElementById(state.selectedId);
-                    const orig = state.originalElement.properties;
+                    const orig = state.originalRect;
 
-                    switch (state.action) {
-                        case 'move':
-                            el.properties.Position.X = orig.Position.X + dx;
-                            el.properties.Position.Y = orig.Position.Y + dy;
-                            break;
-                        case 'radius':
-                            const newRadius = Math.max(0, orig.CornerRadius + (dx + dy) / 2);
-                            el.properties.CornerRadius = Math.min(newRadius, orig.Size.X / 2, orig.Size.Y / 2);
-                            break;
-                        case 'resize':
-                            const dir = state.actionDetail;
-                            if (dir.includes('e')) el.properties.Size.X = Math.max(20, orig.Size.X + dx);
-                            if (dir.includes('w')) {
-                                el.properties.Size.X = Math.max(20, orig.Size.X - dx);
-                                el.properties.Position.X = orig.Position.X + dx;
-                            }
-                            if (dir.includes('s')) el.properties.Size.Y = Math.max(20, orig.Size.Y + dy);
-                            if (dir.includes('n')) {
-                                el.properties.Size.Y = Math.max(20, orig.Size.Y - dy);
-                                el.properties.Position.Y = orig.Position.Y + dy;
-                            }
-                            break;
+                    if (state.action === 'move') {
+                        el.properties.Position.X = orig.X + dx;
+                        el.properties.Position.Y = orig.Y + dy;
+                    } else if (state.action === 'resize') {
+                        const dir = state.actionDetail;
+                        if (dir.includes('e')) el.properties.Size.X = Math.max(20, orig.X + dx);
+                        if (dir.includes('w')) {
+                            el.properties.Size.X = Math.max(20, orig.X - dx);
+                            el.properties.Position.X = orig.X + dx;
+                        }
+                        if (dir.includes('s')) el.properties.Size.Y = Math.max(20, orig.Y + dy);
+                        if (dir.includes('n')) {
+                            el.properties.Size.Y = Math.max(20, orig.Y - dy);
+                            el.properties.Position.Y = orig.Y + dy;
+                        }
                     }
                     render();
                 });
 
                 document.addEventListener('mouseup', () => {
                     state.action = null;
-                    state.originalElement = null;
+                    state.originalRect = null;
                 });
+
+                const resizer = document.getElementById('resizer');
+                resizer.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    document.addEventListener('mousemove', resizePanels);
+                    document.addEventListener('mouseup', stopResize);
+                });
+
+                const resizePanels = (e) => {
+                    const previewContainer = document.getElementById('preview-container');
+                    const codeContainer = document.getElementById('code-container');
+                    const totalWidth = previewContainer.parentElement.offsetWidth;
+                    const newPreviewWidth = e.clientX - previewContainer.parentElement.offsetLeft;
+                    const previewPercentage = (newPreviewWidth / totalWidth) * 100;
+                    
+                    if (previewPercentage > 10 && previewPercentage < 90) {
+                        previewContainer.style.width = `${previewPercentage}%`;
+                        codeContainer.style.width = `${100 - previewPercentage}%`;
+                    }
+                };
+
+                const stopResize = () => {
+                    document.removeEventListener('mousemove', resizePanels);
+                    document.removeEventListener('mouseup', stopResize);
+                };
             };
 
             render();
