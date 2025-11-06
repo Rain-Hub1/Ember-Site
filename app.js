@@ -1,5 +1,6 @@
+// script.js (VERSÃO FINAL CORRIGIDA)
+
 document.addEventListener('DOMContentLoaded', () => {
-    // --- ESTADO GLOBAL E DEFINIÇÕES ---
     const state = {
         elements: [],
         selectedId: null,
@@ -23,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: 'UIListLayout', color: '#a855f7' },
     ];
 
-    // --- FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
     const getDefaultProperties = (type, name) => {
         const base = { Name: name, Position: { Scale: { X: 0, Y: 0 }, Offset: { X: 50, Y: 50 } }, Size: { Scale: { X: 0, Y: 0 }, Offset: { X: 200, Y: 100 } }, AnchorPoint: { X: 0, Y: 0 }, Rotation: 0, BackgroundColor3: '#808080', BackgroundTransparency: 0, ZIndex: 1, Visible: true };
         switch(type) {
@@ -323,8 +323,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     explorer.addEventListener('focusout', (e) => {
         if (e.target.classList.contains('rename-input')) {
-            const el = findElementById(state.elements, state.editingNameId);
-            if (el && e.target.value) el.properties.Name = e.target.value;
+            const id = state.editingNameId;
+            const el = findElementById(state.elements, id);
+            if (el && e.target.value) {
+                el.properties.Name = e.target.value;
+            }
             state.editingNameId = null;
             renderExplorer();
         }
