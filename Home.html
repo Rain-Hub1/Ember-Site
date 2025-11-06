@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro UI Creator for Roblox</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="main-container">
+        <header class="top-bar">
+            <h1>Pro UI Creator</h1>
+            <div id="view-toggle" class="view-toggle">
+                <button id="btn-preview" class="view-button active">Preview</button>
+                <button id="btn-code" class="view-button">Código</button>
+            </div>
+        </header>
+
+        <main class="content-area">
+            <div id="preview-area" class="workspace"></div>
+            <div id="code-area" class="workspace">
+                <pre id="lua-code"></pre>
+            </div>
+
+            <div id="floating-panel" class="floating-panel">
+                <div class="panel-header">
+                    <div id="panel-tabs" class="panel-tabs">
+                        <button class="panel-tab active" data-tab="explorer">Explorer</button>
+                        <button class="panel-tab" data-tab="add">Adicionar</button>
+                        <button class="panel-tab" data-tab="props">Propriedades</button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <div id="section-explorer" class="panel-section active"></div>
+                    <div id="section-add" class="panel-section"></div>
+                    <div id="section-props" class="panel-section"></div>
+                </div>
+                <div id="panel-toggle-btn" class="panel-toggle-btn">☰</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
