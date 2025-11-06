@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Studio UI Creator - Split View</title>
+    <title>Studio UI Creator - Tab View</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <style>
@@ -17,7 +17,6 @@
             --text-secondary: #a0a0a0;
             --accent-blue: #0078d4;
             --accent-yellow: #ffb900;
-            --accent-green: #28a745;
             --shadow: 0 4px 12px rgba(0,0,0,0.4);
         }
 
@@ -37,34 +36,62 @@
 
         .main-content {
             flex-grow: 1;
+            position: relative;
             display: flex;
+            flex-direction: column;
+        }
+
+        .main-toolbar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+            gap: 8px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .tab-button {
+            padding: 8px 24px;
+            border: none;
+            background-color: var(--bg-element);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            background-color: var(--accent-blue);
+            color: var(--text-primary);
+        }
+
+        .workspace-container {
+            flex-grow: 1;
             position: relative;
         }
 
         .workspace {
-            height: 100%;
+            position: absolute;
+            inset: 0;
             padding: 20px;
-            display: flex;
+            display: none; /* Escondido por padrão */
             align-items: center;
             justify-content: center;
         }
 
+        .workspace.active {
+            display: flex; /* Visível quando ativo */
+        }
+
         #preview-container {
-            width: 50%;
             background-color: var(--bg-workspace);
         }
 
         #code-container {
-            width: 50%;
             background-color: #1e1e1e;
-        }
-
-        .resizer-handle {
-            width: 10px;
-            background-color: var(--border-color);
-            cursor: col-resize;
-            position: relative;
-            z-index: 10;
         }
 
         .preview-area {
@@ -85,6 +112,7 @@
             color: #9cdcfe;
             white-space: pre;
             overflow: auto;
+            background: transparent;
         }
 
         .properties-panel {
@@ -122,13 +150,17 @@
         .add-element-btn {
             width: 100%;
             padding: 12px;
-            background-color: var(--accent-green);
+            background-color: var(--accent-blue);
             border: none;
             color: white;
             font-weight: 600;
             border-radius: 6px;
             cursor: pointer;
             margin-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .roblox-element {
@@ -156,34 +188,57 @@
             z-index: 10;
             pointer-events: all;
         }
+        
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; }
+            .properties-panel {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 50vh;
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+                transform: translateY(100%);
+                transition: transform 0.3s ease-in-out;
+            }
+            .properties-panel.open {
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
 
     <div class="app-container">
         <div class="main-content">
-            <div id="preview-container" class="workspace">
-                <div id="preview-area"></div>
+            <div class="main-toolbar">
+                <button id="tab-btn-preview" class="tab-button active">Preview</button>
+                <button id="tab-btn-code" class="tab-button">Código</button>
             </div>
-            <div id="resizer" class="resizer-handle"></div>
-            <div id="code-container" class="workspace">
-                <pre id="lua-code"></pre>
+            <div class="workspace-container">
+                <div id="preview-container" class="workspace active">
+                    <div id="preview-area"></div>
+                </div>
+                <div id="code-container" class="workspace">
+                    <pre id="lua-code"></pre>
+                </div>
             </div>
         </div>
 
-        <aside id="properties-panel" class="properties-panel">
+        <aside id="properties-panel" class="properties-panel open">
             <div class="panel-content">
                 <div class="panel-header">
-                    <h2 id="element-name-header">Explorer</h2>
+                    <h2>Explorer</h2>
                 </div>
                 <div id="explorer-section" class="panel-section"></div>
                 <div class="panel-section">
                     <button id="add-element-btn" class="add-element-btn">
-                        <span class="material-icons" style="vertical-align: middle; font-size: 18px;">add</span> Adicionar
+                        <span class="material-icons">add</span> Adicionar
                     </button>
                 </div>
                 <div class="panel-header" style="border-top: 1px solid var(--border-color);">
-                    <h2>Propriedades</h2>
+                    <h2 id="properties-header">Propriedades</h2>
                 </div>
                 <div id="properties-section" class="panel-section"></div>
             </div>
@@ -287,11 +342,14 @@
 
             const renderProperties = () => {
                 const container = document.getElementById('properties-section');
+                const header = document.getElementById('properties-header');
                 const el = findElementById(state.selectedId);
                 if (!el) {
+                    header.innerText = 'Propriedades';
                     container.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">Selecione um elemento.</p>';
                     return;
                 }
+                header.innerText = el.properties.Name;
                 const createInput = (label, key, type = 'text') => {
                     const keys = key.split('.');
                     let value = el.properties;
@@ -373,7 +431,7 @@
                     
                     if (state.selectedId) {
                         const el = findElementById(state.selectedId);
-                        state.originalRect = { ...el.properties.Position, ...el.properties.Size };
+                        state.originalRect = JSON.parse(JSON.stringify(el.properties));
                     }
                     render();
                 });
@@ -387,19 +445,19 @@
                     const orig = state.originalRect;
 
                     if (state.action === 'move') {
-                        el.properties.Position.X = orig.X + dx;
-                        el.properties.Position.Y = orig.Y + dy;
+                        el.properties.Position.X = orig.Position.X + dx;
+                        el.properties.Position.Y = orig.Position.Y + dy;
                     } else if (state.action === 'resize') {
                         const dir = state.actionDetail;
-                        if (dir.includes('e')) el.properties.Size.X = Math.max(20, orig.X + dx);
+                        if (dir.includes('e')) el.properties.Size.X = Math.max(20, orig.Size.X + dx);
                         if (dir.includes('w')) {
-                            el.properties.Size.X = Math.max(20, orig.X - dx);
-                            el.properties.Position.X = orig.X + dx;
+                            el.properties.Size.X = Math.max(20, orig.Size.X - dx);
+                            el.properties.Position.X = orig.Position.X + dx;
                         }
-                        if (dir.includes('s')) el.properties.Size.Y = Math.max(20, orig.Y + dy);
+                        if (dir.includes('s')) el.properties.Size.Y = Math.max(20, orig.Size.Y + dy);
                         if (dir.includes('n')) {
-                            el.properties.Size.Y = Math.max(20, orig.Y - dy);
-                            el.properties.Position.Y = orig.Y + dy;
+                            el.properties.Size.Y = Math.max(20, orig.Size.Y - dy);
+                            el.properties.Position.Y = orig.Position.Y + dy;
                         }
                     }
                     render();
@@ -410,30 +468,19 @@
                     state.originalRect = null;
                 });
 
-                const resizer = document.getElementById('resizer');
-                resizer.addEventListener('mousedown', (e) => {
-                    e.preventDefault();
-                    document.addEventListener('mousemove', resizePanels);
-                    document.addEventListener('mouseup', stopResize);
+                document.getElementById('tab-btn-preview').addEventListener('click', () => {
+                    document.getElementById('tab-btn-preview').classList.add('active');
+                    document.getElementById('tab-btn-code').classList.remove('active');
+                    document.getElementById('preview-container').classList.add('active');
+                    document.getElementById('code-container').classList.remove('active');
                 });
 
-                const resizePanels = (e) => {
-                    const previewContainer = document.getElementById('preview-container');
-                    const codeContainer = document.getElementById('code-container');
-                    const totalWidth = previewContainer.parentElement.offsetWidth;
-                    const newPreviewWidth = e.clientX - previewContainer.parentElement.offsetLeft;
-                    const previewPercentage = (newPreviewWidth / totalWidth) * 100;
-                    
-                    if (previewPercentage > 10 && previewPercentage < 90) {
-                        previewContainer.style.width = `${previewPercentage}%`;
-                        codeContainer.style.width = `${100 - previewPercentage}%`;
-                    }
-                };
-
-                const stopResize = () => {
-                    document.removeEventListener('mousemove', resizePanels);
-                    document.removeEventListener('mouseup', stopResize);
-                };
+                document.getElementById('tab-btn-code').addEventListener('click', () => {
+                    document.getElementById('tab-btn-code').classList.add('active');
+                    document.getElementById('tab-btn-preview').classList.remove('active');
+                    document.getElementById('code-container').classList.add('active');
+                    document.getElementById('preview-container').classList.remove('active');
+                });
             };
 
             render();
